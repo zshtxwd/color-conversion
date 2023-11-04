@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>RGB转Hex颜色转换器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 32px;
+            margin: 20px 0;
+        }
+
+        label {
+            font-size: 24px;
+            margin-top: 20px;
+        }
+
+        #rgbInput {
+            width: 80%;
+            padding: 10px;
+            font-size: 24px;
+            border: 2px solid #007BFF;
+            border-radius: 4px;
+        }
+
+        #convertButton {
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 24px;
+            margin-top: 20px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        #convertButton:hover {
+            background-color: #0056b3;
+        }
+
+        #hexOutput {
+            font-size: 24px;
+            margin-top: 20px;
+        }
+
+        #colorHistory {
+            text-align: left;
+            font-size: 24px;
+            margin-top: 30px;
+            max-width: 80%;
+            margin-left: auto;
+            margin-right: auto;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+        }
+
+        .historyItem {
+            margin-right: 20px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            position: relative;
+            flex-basis: calc(33.33% - 20px);
+            /* 三列，每列占据 33.33% */
+        }
+
+        .historyItem:hover {
+            background-color: #f0f0f0;
+        }
+
+        .colorSwatch {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        .copyHint {
+            font-size: 18px;
+            color: #007BFF;
+            margin-top: 5px;
+        }
+
+        .deleteButton {
+            cursor: pointer;
+            color: #FF0000;
+            background-color: transparent;
+            border: none;
+            font-size: 18px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .toast-notification {
+            position: fixed;
+            top: 10%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #007BFF;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 4px;
+            display: none;
+        }
+    </style>
+    <script>
+        // 从localStorage中获取历史记录
+        const savedHistory = JSON.parse(localStorage.getItem('colorHistory')) || [];
+
+        function updateHistory() {
+            const colorHistory = document.getElementById('colorHistory');
+            colorHistory.innerHTML = '';
+
+            // 遍历历史记录并插入到历史记录列表
+            for (let i = 0; i < savedHistory.length; i++) {
+                const item = savedHistory[i];
+                const historyItem = document.createElement('div');
+                historyItem.className = 'historyItem';
+                historyItem.innerHTML = `RGB(${item.rgb}) 转 Hex: <span class="colorSwatch" style="background-color:${item.hex};"></span> ${item.hex}`;
+                colorHistory.appendChild(historyItem);
+
+                // 添加双击事件处理程序
+                historyItem.addEventListener('dblclick', function () {
+                    copyToClipboard(item.hex);
+                });
+
+                const copyHint = document.createElement('div');
+                copyHint.className = 'copyHint';
+                copyHint.textContent = '双击历史记录可以复制16进制颜色';
+                historyItem.appendChild(copyHint);
+
+                // 添加删除按钮
+                const deleteButton = document.createElement('span');
+                deleteButton.className = 'deleteButton';
+                deleteButton.innerHTML = '删除记录';
+                deleteButton.addEventListener('click', function () {
+                    deleteHistoryItem(i);
+                });
+                historyItem.appendChild(deleteButton);
+            }
+        }
+
+        function convertToHex() {
+            const rgbInput = document.getElementById('rgbInput');
+            const hexOutput = document.getElementById('hexOutput');
+
+            // 处理中文逗号和多余空格
+            let inputText = rgbInput.value.trim().replace(/，/g, ',');
+
+            const rgbValues = inputText.split(',');
+            if (rgbValues.length === 3) {
+                const red = parseInt(rgbValues[0]);
+                const green = parseInt(rgbValues[1]);
+                const blue = parseInt(rgbValues[2]);
+                if (!isNaN(red) && !isNaN(green) && !isNaN(blue)) {
+                    const hexColor = '#' + ((1 << 24) | (red << 16) | (green << 8) | blue).toString(16).slice(1);
+                    hexOutput.textContent = `Hex颜色: ${hexColor}`;
+
+                    // 添加到历史记录（追加到末尾）
+                    savedHistory.push({ rgb: `${red},${green},${blue}`, hex: hexColor });
+                    localStorage.setItem('colorHistory', JSON.stringify(savedHistory));
+
+                    // 更新历史记录的显示
+                    updateHistory();
+
+                    // 设置Hex颜色值到剪贴板
+                    copyToClipboard(hexColor);
+                } else {
+                    hexOutput.textContent = '无效的RGB值';
+                }
+            } else {
+                hexOutput.textContent = '无效的RGB格式。请使用格式“R，G，B”';
+            }
+        }
+
+        function deleteHistoryItem(index) {
+            if (index >= 0 && index < savedHistory.length) {
+                savedHistory.splice(index, 1);
+                localStorage.setItem('colorHistory', JSON.stringify(savedHistory));
+                updateHistory();
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                convertToHex();
+            }
+        }
+
+        function copyToClipboard(text) {
+            const tempInput = document.createElement('input');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            // 显示复制成功的通知
+            const notification = document.getElementById('toast-notification');
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 2000); // 2秒后自动关闭
+        }
+
+        // 在页面加载完成后执行
+        window.addEventListener('load', (event) => {
+            // 初始化页面时更新历史记录
+            updateHistory();
+        });
+    </script>
+</head>
+
+<body>
+    <h1>RGB转Hex颜色转换器</h1>
+    <label for="rgbInput">输入RGB颜色（例如，255,103,103）：</label>
+    <input type="text" id="rgbInput" onkeypress="handleKeyPress(event)">
+    <button id="convertButton" onclick="convertToHex()">转换</button>
+    <div id="hexOutput"></div>
+    <div id="colorHistory">
+        <h2>转换历史记录：</h2>
+    </div>
+    <div id="toast-notification" class="toast-notification">已成功复制到剪贴板</div>
+</body>
+
+</html>
